@@ -36,8 +36,8 @@ function insertTemp(data){
 
 // Read current temperature from sensor
 function readTemp(callback){
-   fs.readFile('/sys/bus/w1/devices/28-00000400a88a/w1_slave', function(err, buffer)
-	{
+   fs.readFile('/sys/bus/w1/devices/28-021581a9cdff/w1_slave', function(err, buffer)
+  {
       if (err){
          console.error(err);
          process.exit(1);
@@ -53,7 +53,7 @@ function readTemp(callback){
       temp = Math.round(temp * 10) / 10;
 
       // Add date/time to temperature
-   	var data = {
+     var data = {
             temperature_record:[{
             unix_time: Date.now(),
             celsius: temp
@@ -80,90 +80,108 @@ function selectTemp(num_records, start_date, callback){
    var current_temp = db.all("SELECT * FROM (SELECT * FROM temperature_records WHERE unix_time > (strftime('%s',?)*1000) ORDER BY unix_time DESC LIMIT ?) ORDER BY unix_time;", start_date, num_records,
       function(err, rows){
          if (err){
-			   response.writeHead(500, { "Content-type": "text/html" });
-			   response.end(err + "\n");
-			   console.log('Error serving querying database. ' + err);
-			   return;
-				      }
+//         response.writeHead(500, { "Content-type": "text/html" });
+//         response.end(err + "\n");
+         console.log('Error serving querying database. ' + err);
+         return;
+              }
+else{
          data = {temperature_record:[rows]}
          callback(data);
+}
    });
 };
 
 // Setup node http server
 var server = http.createServer(
-	// Our main server function
-	function(request, response)
-	{
-		// Grab the URL requested by the client and parse any query options
-		var url = require('url').parse(request.url, true);
-		var pathfile = url.pathname;
-      var query = url.query;
+// Our main server function
+function(request, response)
+{
+  // Grab the URL requested by the client and parse any query options
+  var url = require('url').parse(request.url, true);
+  var pathfile = url.pathname;
+  var query = url.query;
 
-		// Test to see if it's a database query
-		if (pathfile == '/temperature_query.json'){
-         // Test to see if number of observations was specified as url query
-         if (query.num_obs){
-            var num_obs = parseInt(query.num_obs);
-         }
-         else{
-         // If not specified default to 20. Note use -1 in query string to get all.
-            var num_obs = -1;
-         }
-         if (query.start_date){
-            var start_date = query.start_date;
-         }
-         else{
-            var start_date = '1970-01-01T00:00';
-         }   
-         // Send a message to console log
-         console.log('Database query request from '+ request.connection.remoteAddress +' for ' + num_obs + ' records from ' + start_date+'.');
-         // call selectTemp function to get data from database
-         selectTemp(num_obs, start_date, function(data){
-            response.writeHead(200, { "Content-type": "application/json" });		
-	         response.end(JSON.stringify(data), "ascii");
-         });
-      return;
+  //Test to see if it's a database query
+  if (pathfile == '/temperature_query.json'){
+    //Test to see if number of observations was specified as url query
+    if (query.num_obs){
+      var num_obs = parseInt(query.num_obs);
+    }
+    else{
+      //If not specified default to 20. Note use -1 in query string to get all.
+      var num_obs = -1;
+    }
+    if (query.start_date){
+      var start_date = query.start_date;
+    }
+    else{
+      var start_date = '1970-01-01T00:00';
+    }   
+    //Send a message to console log
+    console.log('Database query request from '+ request.connection.remoteAddress +' for ' + num_obs + ' records from ' + start_date+'.');
+    // call selectTemp function to get data from database
+    selectTemp(num_obs, start_date, function(data){
+      response.writeHead(200, { "Content-type": "application/json" });    
+      response.end(JSON.stringify(data), "ascii");
+    });
+    return;
+  }
+     
+  //Test to see if it's a request for current temperature   
+  if (pathfile == '/temperature_now.json'){
+    readTemp(function(data){
+      response.writeHead(200, { "Content-type": "application/json" });    
+      response.end(JSON.stringify(data), "ascii");
+    });
+    return;
+  }
+  
+  // Handler for favicon.ico requests
+  if (pathfile == '/favicon.ico'){
+    response.writeHead(200, {'Content-Type': 'image/x-icon'});
+    response.end();
+
+    // Optionally log favicon requests.
+    //console.log('favicon requested');
+    return;
+  }
+
+  if (pathfile == '/index.html' || pathfile == '/' || pathfile == '/temperature_log.htm' || pathfile == '/temperature_plot.htm') {
+    staticServer.serve(request,response, function (err,result) {
+      if(err) {
+        response.writeHead(err.status,err.headers);
+        response.end('Error 404 - file not found');
+        return;
+      } 
+    });
+  }
+
+
+  else {
+    console.log('refusing to serve a file that was not specificied!!!');
+    response.statusCode = 404;
+    response.end();
+    return;
+/*
+    // Print requested file to terminal
+    console.log('Request from '+ request.connection.remoteAddress +' for: ' + pathfile);
+
+    // Serve file using node-static      
+    staticServer.serve(request, response, function (err, result) {
+      if (err){
+        // Log the error
+        sys.error("Error serving " + request.url + " - " + err.message);
+          
+        // Respond to the client
+        response.writeHead(err.status, err.headers);
+        response.end('Error 404 - file not found');
+        return;
       }
-      
-      // Test to see if it's a request for current temperature   
-      if (pathfile == '/temperature_now.json'){
-            readTemp(function(data){
-			      response.writeHead(200, { "Content-type": "application/json" });		
-			      response.end(JSON.stringify(data), "ascii");
-               });
-      return;
-      }
-      
-      // Handler for favicon.ico requests
-		if (pathfile == '/favicon.ico'){
-			response.writeHead(200, {'Content-Type': 'image/x-icon'});
-			response.end();
-
-			// Optionally log favicon requests.
-			//console.log('favicon requested');
-			return;
-		}
-
-
-		else {
-			// Print requested file to terminal
-			console.log('Request from '+ request.connection.remoteAddress +' for: ' + pathfile);
-
-			// Serve file using node-static			
-			staticServer.serve(request, response, function (err, result) {
-					if (err){
-						// Log the error
-						sys.error("Error serving " + request.url + " - " + err.message);
-						
-						// Respond to the client
-						response.writeHead(err.status, err.headers);
-						response.end('Error 404 - file not found');
-						return;
-						}
-					return;	
-					})
-		}
+    return;  
+    })
+*/
+  }
 });
 
 // Start temperature logging (every 5 min).
