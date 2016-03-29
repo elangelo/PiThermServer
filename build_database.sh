@@ -4,5 +4,5 @@
 #
 # Tom Holderness 22/01/2012
 sqlite3 piTemps.db 'DROP TABLE temperature_records;'
-sqlite3 piTemps.db 'CREATE TABLE temperature_records(unix_time bigint primary key, celsius real);' 
+sqlite3 piTemps.db 'CREATE TABLE temperature_records(unix_time bigint primary key, top real, bottom real, [in] real, out real);' 
 

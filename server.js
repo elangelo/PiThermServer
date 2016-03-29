@@ -12,6 +12,7 @@ Ref: www.cl.cam.ac.uk/freshers/raspberrypi/tutorials/temperature/
 // Load node modules
 var fs = require('fs');
 var sys = require('sys');
+var async = require('async');
 var http = require('http');
 var sqlite3 = require('sqlite3');
 
@@ -25,51 +26,78 @@ var staticServer = new nodestatic.Server(".");
 var db = new sqlite3.Database('./piTemps.db');
 
 // Write a single temperature record in JSON format to database table.
-function insertTemp(data) {
+function insertTemps(data) {
+    var temps = data.temperature_records;
+    var topTemp = findTemp(temps, "top");
+	var bottomTemp = findTemp(temps, "bottom");
+	var inTemp = findTemp(temps, "in");
+	var outTemp = findTemp(temps, "out");
+
     // data is a javascript object   
-    var statement = db.prepare("INSERT INTO temperature_records VALUES (?, ?)");
+    var statement = db.prepare("INSERT INTO temperature_records VALUES (?, ?, ?, ?, ?)");
     // Insert values into prepared statement
-    statement.run(data.temperature_record[0].unix_time, data.temperature_record[0].celsius);
+    statement.run(data.unix_time, topTemp, bottomTemp, inTemp, outTemp);
     // Execute the statement
     statement.finalize();
 }
 
+function findTemp(temps, sensor_name) {
+	return temps.find(function(d) { return d.sensor === sensor_name; }).temp;
+}
+
 // Read current temperature from sensor
-function readTemp(callback) {
-    fs.readFile('/sys/bus/w1/devices/28-021581a9cdff/w1_slave', function (err, buffer) {
+function readTemp(sensor, callback){
+    fs.readFile('/sys/bus/w1/devices/' + sensor.value + '/w1_slave', function (err, buffer) {
         if (err) {
-            console.error(err);
-            process.exit(1);
+           callback(err);
+           console.error(err);
+           process.exit(1);
         }
-
-        // Read data from file (using fast node ASCII encoding).
-        var data = buffer.toString('ascii').split(" "); // Split by space
-
-        // Extract temperature from string and divide by 1000 to give celsius
+        var data = buffer.toString('ascii').split(" ");
         var temp = parseFloat(data[data.length - 1].split("=")[1]) / 1000.0;
-
-        // Round to one decimal place
-        temp = Math.round(temp * 10) / 10;
-
-        // Add date/time to temperature
-        var data = {
-            temperature_record: [{
-                unix_time: Date.now(),
-                celsius: temp
-            }]
-        };
-
-        // Execute call back with data
-        callback(data);
+        temp = Math.round(temp*10) / 10;
+        callback(null, { "sensor": sensor.key, "temp": temp} );
     });
-};
+}
+
+// Read temperatures from sensors
+function readTemps(callback) {
+    var sensors = [];
+    sensors.push({
+        key: "top",
+        value: "28-021581d6f1ff"
+    });
+    sensors.push({
+        key:"bottom",
+        value:"28-021581a9cdff"
+    });
+    sensors.push({
+        key:"in",
+        value:"28-0215819713ff"
+    });
+    sensors.push({
+        key:"out",
+        value:"28-0115818cf0ff"
+    });
+
+     async.map(sensors, readTemp, function (err, results){
+         if(err){
+             callback(err);
+         }
+         var data = {
+            temperature_records: results,
+            unix_time:Date.now()
+         }
+         callback(data);
+     });
+}
 
 // Create a wrapper function which we'll use specifically for logging
 function logTemp(interval) {
     // Call the readTemp function with the insertTemp function as output to get initial reading
-    readTemp(insertTemp);
+    readTemps(insertTemps);
     // Set the repeat interval (milliseconds). Third argument is passed as callback function to first (i.e. readTemp(insertTemp)).
-    setInterval(readTemp, interval, insertTemp);
+    setInterval(readTemp, interval, insertTemps);
 };
 
 // Get temperature records from database
@@ -189,6 +217,6 @@ logTemp(msecs);
 // Send a message to console
 console.log('Server is logging to database at ' + msecs + 'ms intervals');
 // Enable server
-server.listen(8000);
+server.listen(9000);
 // Log message
-console.log('Server running at http://localhost:8000');
+console.log('Server running at http://localhost:9000');
