@@ -41,6 +41,7 @@ function insertTemps(data) {
     statement.finalize();
 }
 
+//Distills the required temperature for an object with temperatures, might have to look into this, doesn't look very efficient...
 function findTemp(temps, sensor_name) {
 	return temps.find(function(d) { return d.sensor === sensor_name; }).temp;
 }
@@ -49,7 +50,6 @@ function findTemp(temps, sensor_name) {
 function readTemp(sensor, callback){
     fs.readFile('/sys/bus/w1/devices/' + sensor.value + '/w1_slave', function (err, buffer) {
         if (err) {
-           callback(err);
            console.error(err);
            process.exit(1);
         }
@@ -157,7 +157,7 @@ function (request, response) {
 
     //Test to see if it's a request for current temperature   
     if (pathfile == '/temperature_now.json') {
-        readTemp(function (data) {
+        readTemps(function (data) {
             response.writeHead(200, { "Content-type": "application/json" });
             response.end(JSON.stringify(data), "ascii");
         });

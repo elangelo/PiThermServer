@@ -17,11 +17,14 @@
                 //alert(data.unix_time);
                 // Create the series
                 var series = chart.series[0],
-                shift = series.data.length > 20; // shift if the series longer than 20
+                shift = series.data.length > 100; // shift if the series longer than 20
                 // Add the point
-                chart.series[0].addPoint([data.temperature_record[0].unix_time, data.temperature_record[0].celsius], true, shift);
-                // Repeat this function call after 1 second
-                setTimeout(getData, 1000);
+                chart.series[0].addPoint([data.unix_time, data.temperature_records[0].temp], true, shift);
+                chart.series[1].addPoint([data.unix_time, data.temperature_records[1].temp], true, shift);
+                chart.series[2].addPoint([data.unix_time, data.temperature_records[2].temp], true, shift);
+                chart.series[3].addPoint([data.unix_time, data.temperature_records[3].temp], true, shift);
+                // Repeat this function call after 5 second
+                setTimeout(getData, 5000);
             });
         }
     </script>
@@ -57,10 +60,11 @@
                         margin: 15
                     }
                 },
-                series: [{
-                    name: 'DS18B20 sensor (\u00B10.5\u00B0C)',
-                    data: []
-                }]
+                series: [
+                { name: 'top', data: [] },
+                { name: 'bottom', data: [] },
+                { name: 'in', data: [] },
+                { name: 'out', data: [] }]
             });
         });
     </script>

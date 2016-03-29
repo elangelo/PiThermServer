@@ -13,19 +13,24 @@
         // Get data from server in JSON format (query time series when sensor was outside).
         function getData() {
             $.getJSON('/temperature_query.json?num_obs=-1&start_date=2013-01-23T16:00', function (data) {
-                var series = {
-                    id: 'series',
-                    name: 'DS18B20 sensor (\u00B10.5\u00B0C)',
-                    type: 'area',
-                    data: []
-                };
+                console.log(data);
+                var topseries = { id: 'top-series', name: 'top', type: 'spline', data: [] };
+                var bottomseries = { id: 'bottom-series', name: 'bottom', type: 'spline', data: [] };
+                var inseries = { id: 'in-series', name: 'in', type: 'spline', data: [] };
+                var outseries = { id: 'out-series', name: 'out', type: 'spline', data: [] };
                 var i = 0;
                 // Iterate JSON data series and add to plot
                 while (data.temperature_record[0][i]) {
-                    series.data.push([data.temperature_record[0][i].unix_time, data.temperature_record[0][i].celsius]);
+                    topseries.data.push([data.temperature_record[0][i].unix_time, data.temperature_record[0][i].top]);
+                    bottomseries.data.push([data.temperature_record[0][i].unix_time, data.temperature_record[0][i].bottom]);
+                    inseries.data.push([data.temperature_record[0][i].unix_time, data.temperature_record[0][i].in]);
+                    outseries.data.push([data.temperature_record[0][i].unix_time, data.temperature_record[0][i].out]);
                     i++;
                 }
-                chart.addSeries(series);
+                chart.addSeries(topseries);
+                chart.addSeries(bottomseries);
+                chart.addSeries(inseries);
+                chart.addSeries(outseries);
             });
         }
     </script>
