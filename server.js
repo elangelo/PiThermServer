@@ -217,6 +217,6 @@ logTemp(msecs);
 // Send a message to console
 console.log('Server is logging to database at ' + msecs + 'ms intervals');
 // Enable server
-server.listen(9000);
+server.listen(8000);
 // Log message
-console.log('Server running at http://localhost:9000');
+console.log('Server running at http://localhost:8000');
