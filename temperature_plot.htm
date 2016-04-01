@@ -13,20 +13,24 @@
 
         // Get data from Pi NodeJS server
         function getData() {
-            $.getJSON('./temperature_now.json', function (data) {
-                //alert(data.unix_time);
-                // Create the series
-                var series = chart.series[0],
-                shift = series.data.length > 100; // shift if the series longer than 20
-                // Add the point
-                chart.series[0].addPoint([data.unix_time, data.temperature_records[0].temp], true, shift);
-                chart.series[1].addPoint([data.unix_time, data.temperature_records[1].temp], true, shift);
-                chart.series[2].addPoint([data.unix_time, data.temperature_records[2].temp], true, shift);
-                chart.series[3].addPoint([data.unix_time, data.temperature_records[3].temp], true, shift);
-                // Repeat this function call after 5 second
-                setTimeout(getData, 5000);
-            });
-        }
+            $.getJSON('./temperature_now.json')
+                .done(function (data) {
+                    // Create the series
+                    var series = chart.series[0],
+                    shift = series.data.length > 100; // shift if the series longer than 20
+                    // Add the point
+                    chart.series[0].addPoint([data.unix_time, data.temperature_records[0].temp], true, shift);
+                    chart.series[1].addPoint([data.unix_time, data.temperature_records[1].temp], true, shift);
+                    chart.series[2].addPoint([data.unix_time, data.temperature_records[2].temp], true, shift);
+                    chart.series[3].addPoint([data.unix_time, data.temperature_records[3].temp], true, shift);
+                    // Repeat this function call after 5 second
+                    setTimeout(getData, 5000);
+                })
+                .fail(function () {
+                    //don't stop because we fail one time...
+                    setTimeout(getData,5000);
+                });
+            }
     </script>
 
     <script type="text/javascript">
