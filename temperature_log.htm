@@ -12,7 +12,7 @@
         var chart; // global chart variable
         // Get data from server in JSON format (query time series when sensor was outside).
         function getData() {
-            $.getJSON('/temperature_query.json?num_obs=-1&start_date=2013-01-23T16:00', function (data) {
+            $.getJSON('/temperature_query.json?num_obs=600&start_date=2013-01-23T16:00', function (data) {
                 console.log(data);
                 var topseries = { id: 'top-series', name: 'top', type: 'spline', data: [] };
                 var bottomseries = { id: 'bottom-series', name: 'bottom', type: 'spline', data: [] };

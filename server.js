@@ -136,8 +136,8 @@ function (request, response) {
             var num_obs = parseInt(query.num_obs);
         }
         else {
-            //If not specified default to 20. Note use -1 in query string to get all.
-            var num_obs = -1;
+            //If not specified default to 600. Note use -1 in query string to get all.
+            var num_obs = 600;
         }
         if (query.start_date) {
             var start_date = query.start_date;
