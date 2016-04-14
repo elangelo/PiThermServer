@@ -1,9 +1,7 @@
 // server.js - NodeJS server for the PiThermServer project.
 
 /* 
-
 Parses data from DS18B20 temperature sensor and serves as a JSON object.
-Uses node-static module to serve a plot of current temperature (uses highcharts).
 
 Tom Holderness 03/01/2013
 Ref: www.cl.cam.ac.uk/freshers/raspberrypi/tutorials/temperature/
@@ -11,7 +9,6 @@ Ref: www.cl.cam.ac.uk/freshers/raspberrypi/tutorials/temperature/
 
 // Load node modules
 var fs = require('fs');
-var sys = require('sys');
 var async = require('async');
 var http = require('http');
 var sqlite3 = require('sqlite3');
@@ -50,14 +47,25 @@ function findTemp(temps, sensor_name) {
 function readTemp(sensor, callback){
     fs.readFile('/sys/bus/w1/devices/' + sensor.value + '/w1_slave', function (err, buffer) {
         if (err) {
-           console.error(err);
-           process.exit(1);
+           err(err);
         }
         var data = buffer.toString('ascii').split(" ");
         var temp = parseFloat(data[data.length - 1].split("=")[1]) / 1000.0;
         temp = Math.round(temp*10) / 10;
         callback(null, { "sensor": sensor.key, "temp": temp} );
     });
+}
+
+function getDateString(){
+    return new Date().toISOString();
+}
+
+function log(log){
+    console.log (getDateString() + " : " + log);
+}
+
+function err(log){
+    console.err (getDateString() + " : " + log);
 }
 
 // Read temperatures from sensors
@@ -80,8 +88,9 @@ function readTemps(callback) {
         value:"28-0115818cf0ff"
     });
 
-     async.map(sensors, readTemp, function (err, results){
+    async.map(sensors, readTemp, function (err, results){
          if(err){
+             err(err);
              callback(err);
          }
          var data = {
@@ -89,7 +98,7 @@ function readTemps(callback) {
             unix_time:Date.now()
          }
          callback(data);
-     });
+    });
 }
 
 // Create a wrapper function which we'll use specifically for logging
@@ -110,7 +119,7 @@ function selectTemp(num_records, start_date, callback) {
            if (err) {
                //         response.writeHead(500, { "Content-type": "text/html" });
                //         response.end(err + "\n");
-               console.log('Error serving querying database. ' + err);
+               log('Error serving querying database. ' + err);
                return;
            }
            else {
@@ -128,6 +137,7 @@ function (request, response) {
     var url = require('url').parse(request.url, true);
     var pathfile = url.pathname;
     var query = url.query;
+    log(request.connection.remoteAddress + " " + url.pathname );
 
     //Test to see if it's a database query
     if (pathfile == '/temperature_query.json') {
@@ -145,8 +155,6 @@ function (request, response) {
         else {
             var start_date = '1970-01-01T00:00';
         }
-        //Send a message to console log
-        console.log('Database query request from ' + request.connection.remoteAddress + ' for ' + num_obs + ' records from ' + start_date + '.');
         // call selectTemp function to get data from database
         selectTemp(num_obs, start_date, function (data) {
             response.writeHead(200, { "Content-type": "application/json" });
@@ -170,13 +178,13 @@ function (request, response) {
         response.end();
 
         // Optionally log favicon requests.
-        //console.log('favicon requested');
         return;
     }
 
     if (pathfile == '/index.html' || pathfile == '/' || pathfile == '/temperature_log.htm' || pathfile == '/temperature_plot.htm') {
         staticServer.serve(request, response, function (err, result) {
             if (err) {
+                err(request.connection.remoteAddress + " " + err);
                 response.writeHead(err.status, err.headers);
                 response.end('Error 404 - file not found');
                 return;
@@ -184,30 +192,11 @@ function (request, response) {
         });
     }
 
-
     else {
-        console.log('refusing to serve a file that was not specificied!!!');
+        err(request.connection.remoteAddress + " " + url.pathname + 'refusing to serve a file that was not specificied!!!');
         response.statusCode = 404;
         response.end();
         return;
-        /*
-            // Print requested file to terminal
-            console.log('Request from '+ request.connection.remoteAddress +' for: ' + pathfile);
-        
-            // Serve file using node-static      
-            staticServer.serve(request, response, function (err, result) {
-              if (err){
-                // Log the error
-                sys.error("Error serving " + request.url + " - " + err.message);
-                  
-                // Respond to the client
-                response.writeHead(err.status, err.headers);
-                response.end('Error 404 - file not found');
-                return;
-              }
-            return;  
-            })
-        */
     }
 });
 
@@ -215,8 +204,9 @@ function (request, response) {
 var msecs = (60 * 5) * 1000; // log interval duration in milliseconds
 logTemp(msecs);
 // Send a message to console
-console.log('Server is logging to database at ' + msecs + 'ms intervals');
+log('Server is logging to database at ' + msecs + 'ms intervals');
+var port = 8000;
 // Enable server
-server.listen(8000);
+server.listen(port);
 // Log message
-console.log('Server running at http://localhost:8000');
+log('Server running at http://localhost:' + port);
