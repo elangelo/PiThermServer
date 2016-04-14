@@ -22,6 +22,18 @@ var staticServer = new nodestatic.Server(".");
 // Setup database connection for logging
 var db = new sqlite3.Database('./piTemps.db');
 
+function getDateString(){
+    return new Date().toISOString();
+}
+
+function log(log){
+    console.log (getDateString() + " : " + log);
+}
+
+function err(log){
+    console.error (getDateString() + " : " + log);
+}
+
 // Write a single temperature record in JSON format to database table.
 function insertTemps(data) {
     var temps = data.temperature_records;
@@ -54,18 +66,6 @@ function readTemp(sensor, callback){
         temp = Math.round(temp*10) / 10;
         callback(null, { "sensor": sensor.key, "temp": temp} );
     });
-}
-
-function getDateString(){
-    return new Date().toISOString();
-}
-
-function log(log){
-    console.log (getDateString() + " : " + log);
-}
-
-function err(log){
-    console.err (getDateString() + " : " + log);
 }
 
 // Read temperatures from sensors
