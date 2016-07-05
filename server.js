@@ -26,11 +26,11 @@ function getDateString(){
     return new Date().toISOString();
 }
 
-function log(log){
+function logmsg(log){
     console.log (getDateString() + " : " + log);
 }
 
-function err(log){
+function logerr(log){
     console.error (getDateString() + " : " + log);
 }
 
@@ -57,19 +57,23 @@ function findTemp(temps, sensor_name) {
 
 // Read current temperature from sensor
 function readTemp(sensor, callback){
-    fs.readFile('/sys/bus/w1/devices/' + sensor.value + '/w1_slave', function (err, buffer) {
-        if (err) {
-           err(err);
-        }
-        var data = buffer.toString('ascii').split(" ");
-        var temp = parseFloat(data[data.length - 1].split("=")[1]) / 1000.0;
-        temp = Math.round(temp*10) / 10;
-        callback(null, { "sensor": sensor.key, "temp": temp} );
-    });
+    if(sensor) {
+        fs.readFile('/sys/bus/w1/devices/' + sensor.value + '/w1_slave', function (err, buffer) {
+            if (err) {
+               logerr(err);
+            } else {
+               var data = buffer.toString('ascii').split(" ");
+               var temp = parseFloat(data[data.length - 1].split("=")[1]) / 1000.0;
+               temp = Math.round(temp*10) / 10;
+               callback(null, { "sensor": sensor.key, "temp": temp} );
+            }
+        });
+    }
 }
 
 // Read temperatures from sensors
 function readTemps(callback) {
+    logmsg("reading temps");
     var sensors = [];
     sensors.push({
         key: "top",
@@ -90,7 +94,7 @@ function readTemps(callback) {
 
     async.map(sensors, readTemp, function (err, results){
          if(err){
-             err(err);
+             logerr(err);
              callback(err);
          }
          var data = {
@@ -106,7 +110,7 @@ function logTemp(interval) {
     // Call the readTemp function with the insertTemp function as output to get initial reading
     readTemps(insertTemps);
     // Set the repeat interval (milliseconds). Third argument is passed as callback function to first (i.e. readTemp(insertTemp)).
-    setInterval(readTemp, interval, insertTemps);
+    setInterval(readTemps, interval, insertTemps);
 };
 
 // Get temperature records from database
@@ -119,7 +123,7 @@ function selectTemp(num_records, start_date, callback) {
            if (err) {
                //         response.writeHead(500, { "Content-type": "text/html" });
                //         response.end(err + "\n");
-               log('Error serving querying database. ' + err);
+               logerr('Error serving querying database. ' + err);
                return;
            }
            else {
@@ -137,7 +141,7 @@ function (request, response) {
     var url = require('url').parse(request.url, true);
     var pathfile = url.pathname;
     var query = url.query;
-    log(request.connection.remoteAddress + " " + url.pathname );
+    logmsg(request.connection.remoteAddress + " " + url.pathname );
 
     //Test to see if it's a database query
     if (pathfile == '/temperature_query.json') {
@@ -184,7 +188,7 @@ function (request, response) {
     if (pathfile == '/index.html' || pathfile == '/' || pathfile == '/temperature_log.htm' || pathfile == '/temperature_plot.htm') {
         staticServer.serve(request, response, function (err, result) {
             if (err) {
-                err(request.connection.remoteAddress + " " + err);
+                logerr(request.connection.remoteAddress + " " + err);
                 response.writeHead(err.status, err.headers);
                 response.end('Error 404 - file not found');
                 return;
@@ -193,7 +197,7 @@ function (request, response) {
     }
 
     else {
-        err(request.connection.remoteAddress + " " + url.pathname + 'refusing to serve a file that was not specificied!!!');
+        logerr(request.connection.remoteAddress + " " + url.pathname + 'refusing to serve a file that was not specificied!!!');
         response.statusCode = 404;
         response.end();
         return;
@@ -204,9 +208,9 @@ function (request, response) {
 var msecs = (60 * 5) * 1000; // log interval duration in milliseconds
 logTemp(msecs);
 // Send a message to console
-log('Server is logging to database at ' + msecs + 'ms intervals');
+logmsg('Server is logging to database at ' + msecs + 'ms intervals');
 var port = 8000;
 // Enable server
 server.listen(port);
 // Log message
-log('Server running at http://localhost:' + port);
+logmsg('Server running at http://localhost:' + port);
